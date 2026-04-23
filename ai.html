@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tic Tac Toe AI Levels</title>
+
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  h1 { margin-bottom: 5px; }
+
+  .scoreboard {
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 100px);
+    gap: 5px;
+  }
+
+  .cell {
+    width: 100px;
+    height: 100px;
+    background: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px;
+    cursor: pointer;
+    border: 2px solid white;
+  }
+
+  .cell:hover {
+    background: #333;
+  }
+
+  button {
+    margin: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+  }
+
+  .controls {
+    margin-top: 10px;
+    text-align: center;
+  }
+  .easy {
+  background-color: #98ff98; /* mint green */
+  color: black;
+  border: none;
+}
+
+.medium {
+  background-color: #ffd700; /* sunflower yellow */
+  color: black;
+  border: none;
+}
+
+.hard {
+  background-color: #ff4d4d; /* red */
+  color: white;
+  border: none;
+}
+
+/* optional nicer look for all buttons */
+button {
+  margin: 4px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+<li class="nav-item"><a class="nav-link px-lg-3 py-3 py-lg-4" href="index.html">home</a></li>
+<h1>Tic Tac Toe AI</h1>
+
+<div class="scoreboard">
+  You: <span id="playerScore">0</span> |
+  Bot: <span id="botScore">0</span><br>
+  Difficulty: <span id="levelText">Easy</span>
+</div>
+
+<div class="board" id="board"></div>
+
+<div id="status">Press Start</div>
+
+<div class="controls">
+  <button class="easy" onclick="setLevel('easy')">Easy</button>
+<button class="medium" onclick="setLevel('medium')">Medium</button>
+<button class="hard" onclick="setLevel('hard')">Hard</button>
+
+  <button onclick="startGame()">Start</button>
+  <button onclick="resetGame()">Restart</button>
+</div>
+
+<script>
+const board = document.getElementById("board");
+const statusText = document.getElementById("status");
+const levelText = document.getElementById("levelText");
+
+let cells = [];
+let gameActive = false;
+
+let playerScore = 0;
+let botScore = 0;
+
+let level = "easy";
+
+// create board
+function createBoard() {
+  board.innerHTML = "";
+  cells = [];
+
+  for (let i = 0; i < 9; i++) {
+    cells.push("");
+
+    const cell = document.createElement("div");
+    cell.classList.add("cell");
+    cell.dataset.index = i;
+    cell.addEventListener("click", playerMove);
+    board.appendChild(cell);
+  }
+}
+
+function setLevel(lvl) {
+  level = lvl;
+  levelText.textContent = lvl.charAt(0).toUpperCase() + lvl.slice(1);
+}
+
+function startGame() {
+  resetBoard();
+  gameActive = true;
+  statusText.textContent = "Your turn (X)";
+}
+
+function resetGame() {
+  playerScore = 0;
+  botScore = 0;
+  updateScore();
+  startGame();
+}
+
+function resetBoard() {
+  createBoard();
+}
+
+function playerMove(e) {
+  if (!gameActive) return;
+
+  const index = e.target.dataset.index;
+  if (cells[index] !== "") return;
+
+  makeMove(index, "X");
+
+  if (checkWinner("X")) {
+    playerScore++;
+    endRound("You win! 🎉");
+    return;
+  }
+
+  if (isDraw()) {
+    endRound("Draw!");
+    return;
+  }
+
+  statusText.textContent = "Bot thinking...";
+  setTimeout(botMove, 500);
+}
+
+// 🤖 BOT AI
+function botMove() {
+  if (!gameActive) return;
+
+  let move;
+
+  if (level === "easy") {
+    move = randomMove();
+  }
+
+  if (level === "medium") {
+    move = smartMoveMedium();
+  }
+
+  if (level === "hard") {
+    move = smartMoveHard();
+  }
+
+  makeMove(move, "O");
+
+  if (checkWinner("O")) {
+    botScore++;
+    endRound("Bot wins 🤖");
+    return;
+  }
+
+  if (isDraw()) {
+    endRound("Draw!");
+    return;
+  }
+
+  statusText.textContent = "Your turn (X)";
+}
+
+// 🎲 EASY: random moves
+function randomMove() {
+  let empty = getEmpty();
+  return empty[Math.floor(Math.random() * empty.length)];
+}
+
+// 🧠 MEDIUM: block player wins sometimes
+function smartMoveMedium() {
+  return findBestMove(false);
+}
+
+// 💀 HARD: block + try to win
+function smartMoveHard() {
+  return findBestMove(true);
+}
+
+// shared AI logic
+function findBestMove(tryWin) {
+  let empty = getEmpty();
+
+  // try winning move
+  for (let i of empty) {
+    cells[i] = "O";
+    if (checkWinner("O")) {
+      cells[i] = "";
+      return i;
+    }
+    cells[i] = "";
+  }
+
+  // block player
+  for (let i of empty) {
+    cells[i] = "X";
+    if (checkWinner("X")) {
+      cells[i] = "";
+      return i;
+    }
+    cells[i] = "";
+  }
+
+  // otherwise random
+  return randomMove();
+}
+
+function getEmpty() {
+  return cells.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+}
+
+function makeMove(index, player) {
+  cells[index] = player;
+  document.querySelectorAll(".cell")[index].textContent = player;
+}
+
+function checkWinner(player) {
+  const winPatterns = [
+    [0,1,2],[3,4,5],[6,7,8],
+    [0,3,6],[1,4,7],[2,5,8],
+    [0,4,8],[2,4,6]
+  ];
+
+  return winPatterns.some(pattern =>
+    pattern.every(i => cells[i] === player)
+  );
+}
+
+function isDraw() {
+  return cells.every(c => c !== "");
+}
+
+function endRound(msg) {
+  gameActive = false;
+  statusText.textContent = msg;
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById("playerScore").textContent = playerScore;
+  document.getElementById("botScore").textContent = botScore;
+}
+
+// init
+createBoard();
+</script>
+
+</body>
+</html>
